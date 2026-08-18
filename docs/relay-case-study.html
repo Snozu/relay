@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Relay — Operations Agent · Case Study</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --ink: #090a0c;
+  --muted: #5f666f;
+  --accent: #315487;
+  --accent-bright: #5276b5;
+  --accent-soft: #dbe4ff;
+  --signal: #138b4e;
+  --write: #b23c26;
+  --write-soft: #fbe6e1;
+  --border: #d6dadd;
+  --surface: #f3f5f6;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Onest', -apple-system, system-ui, sans-serif;
+  color: var(--ink);
+  line-height: 1.6;
+  font-size: 10.5pt;
+  margin: 0;
+  padding: 0;
+}
+
+.page { max-width: 46rem; margin: 0 auto; padding: 0 8mm; }
+
+h1 {
+  font-size: 30pt;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  font-weight: 700;
+  margin: 0 0 .4rem;
+}
+h1 + p strong { font-size: 12.5pt; font-weight: 600; line-height: 1.35; display: block; }
+
+h2 {
+  font-size: 15pt;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+  margin: 2.1rem 0 .7rem;
+  padding-top: .7rem;
+  border-top: 1px solid var(--border);
+  page-break-after: avoid;
+}
+h3 { font-size: 11.5pt; font-weight: 600; margin: 1.3rem 0 .4rem; page-break-after: avoid; }
+
+p { margin: 0 0 .75rem; }
+strong { font-weight: 600; }
+
+a { color: var(--accent); text-decoration: none; }
+
+ul, ol { margin: 0 0 .8rem; padding-left: 1.1rem; }
+li { margin-bottom: .3rem; }
+
+/* The lede line under the title */
+blockquote {
+  margin: 1.1rem 0;
+  padding: .75rem 1rem;
+  background: var(--write-soft);
+  border-left: 3px solid var(--write);
+  border-radius: 0 4px 4px 0;
+  page-break-inside: avoid;
+}
+blockquote p { margin: 0; font-size: 9.5pt; }
+h2 + p + blockquote, h2 ~ blockquote {
+  background: var(--surface);
+  border-left-color: var(--accent-bright);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: .8rem 0 1.1rem;
+  font-size: 9pt;
+  page-break-inside: avoid;
+}
+th {
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 1.5px solid var(--ink);
+  padding: .4rem .5rem;
+}
+td { border-bottom: 1px solid var(--border); padding: .4rem .5rem; vertical-align: top; }
+tr:nth-child(even) td { background: #fafbfc; }
+
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .87em;
+  background: var(--surface);
+  padding: .08em .32em;
+  border-radius: 3px;
+}
+td code { background: none; padding: 0; }
+
+pre {
+  background: var(--ink);
+  color: #eceef0;
+  padding: 1rem 1.1rem;
+  border-radius: 5px;
+  overflow-x: auto;
+  font-size: 7.6pt;
+  line-height: 1.5;
+  page-break-inside: avoid;
+}
+pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+
+img {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  margin: .8rem 0 .4rem;
+  page-break-inside: avoid;
+}
+/* Caption = the paragraph immediately after an image paragraph. Scoped tightly
+   so ordinary italics inside body text are left alone. */
+p:has(> img) + p em {
+  display: block;
+  font-size: 8.5pt;
+  color: var(--muted);
+  font-style: normal;
+  line-height: 1.45;
+  margin-bottom: 1rem;
+}
+
+hr { border: 0; border-top: 1px solid var(--border); margin: 1.6rem 0; display: none; }
+
+@page { size: A4; margin: 15mm 10mm 14mm; }
+@media print { body { font-size: 10pt; } }
+</style>
+</head><body><div class="page"><h1>Relay — Operations Agent</h1>
+<p><strong>A multi-agent AI system that answers from a company&#39;s own operational data and takes governed actions with human approval.</strong></p>
+<p>Next.js 16 · AI SDK v7 · Claude / DeepSeek · PostgreSQL + pgvector · Local embeddings · Self-hosted</p>
+<blockquote>
+<p><strong>This is a showcase build, not a client engagement.</strong> <em>Harbor &amp; Pine</em> is a fictional US home-goods brand and every customer, order, shipment and refund in it is generated data. The architecture, the code and the numbers in this document are real and reproducible in the live demo. The company is not.</p>
+</blockquote>
+<hr>
+<h2>1. What it is</h2>
+<p>Operations and support teams live in a gap. The answer to <em>&quot;why hasn&#39;t this customer&#39;s order arrived, and do we owe them money?&quot;</em> sits in two places at once: the order database, and a policy document nobody has read since onboarding. Bridging that gap by hand is most of what a support agent does all day.</p>
+<p>Relay closes it. It is a chat console where an operations team asks in plain English, and gets an answer grounded in both sources at once — the live database and the company&#39;s own written policy — with the reasoning and every underlying query visible on screen.</p>
+<p>It also acts. Relay can issue a refund. It never does so on its own: it proposes the action, states the amount, cites the policy that justifies it, and waits for a human to approve. Nothing moves until someone presses a button.</p>
+<p><strong>What a buyer is looking at:</strong> a system that reads their real data, applies their real rules, shows its work, and cannot spend their money without permission.</p>
+<hr>
+<h2>2. The interface</h2>
+<p><img src="assets/console-delegation.jpg" alt="The Relay console mid-request: conversation on the left, live agent delegation on the right."></p>
+<p><img src="assets/delayed-orders-table.jpg" alt="The delayed-orders table, rendered by the agent from a natural-language question."></p>
+<p><em>The same conversation, further down: a real table with status badges and days late, generated from &quot;what is running late?&quot;. Nothing here is prose the model wrote — the frontend renders the tool result.</em></p>
+<p><em>One console, three panes. <strong>Left:</strong> the conversation. <strong>Right, top:</strong> live agent activity — which specialist was called, the exact instruction it was given, every tool it ran, and the real latency of each. <strong>Right, bottom:</strong> a tabbed inspector for the document library, the audit log, and the dataset.</em></p>
+<p>Three deliberate choices:</p>
+<ul>
+<li><strong>The machinery is visible.</strong> A chat that only streams text is indistinguishable from a wrapper around a public chatbot. Showing <code>get_order → HP-1042 — fulfilled, $537.00, Danielle Okafor · 94ms</code> is what makes a system legible.</li>
+<li><strong>Delegation is shown, not hidden.</strong> The right pane names the specialist, quotes the instruction it received, and nests its tool calls beneath it.</li>
+<li><strong>Writes are visually separate.</strong> Anything that changes data is coral, labelled <code>write</code>, and tagged <code>not delegated</code>. Colour means something in this interface or it is not used.</li>
+</ul>
+<hr>
+<h2>3. Architecture at a glance</h2>
+<pre><code>Browser (useChat, streaming UI message parts)
+   │  POST /api/chat            per-IP rate limit
+   ▼
+Relay orchestrator  ── owns issue_refund directly, never delegates it
+   │
+   ├── consult_operations ──▶ Operations specialist  (own context, 7 read tools)
+   │                              └──▶ PostgreSQL
+   │
+   ├── consult_knowledge  ──▶ Knowledge specialist   (own context, 1 read tool)
+   │                              └──▶ hybrid retrieval
+   │                                     ├── pgvector cosine  (semantic)
+   │                                     └── tsvector + BM25  (keyword)
+   │                                     └── fused by reciprocal rank
+   │
+   └── issue_refund ──▶ HUMAN APPROVAL GATE ──▶ PostgreSQL write
+                                                └──▶ audit log
+
+Every tool call, from any agent: input · result · status · latency → audit log
+</code></pre>
+<p><strong>One datastore.</strong> Business tables and document embeddings live in the same PostgreSQL instance. One thing to run, one thing to back up, one thing to explain.</p>
+<hr>
+<h2>4. The agents</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Agent</th>
+<th>Specialty</th>
+<th>Tools</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><strong>Relay</strong> (orchestrator)</td>
+<td>Reads the request, decides who handles it, synthesises the answer, owns the write path</td>
+<td>2 delegations + 1 write</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Operations specialist</strong></td>
+<td>What actually happened: orders, shipments, customers, tickets, and the operational overview. Own context window.</td>
+<td>7 read</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Knowledge specialist</strong></td>
+<td>What the rules say: policy, thresholds, carrier requirements. Own context window.</td>
+<td>1 read</td>
+</tr>
+</tbody></table>
+<p><strong>Why split at all.</strong> Not for speed — delegation costs latency. It buys three things: tool selection is far more reliable when a model picks from six related tools instead of fourteen unrelated ones; each specialist&#39;s context stays clean; and the write path is structurally isolated.</p>
+<p><strong>Why the write is not delegated.</strong> <code>issue_refund</code> sits on the orchestrator, where the human approval gate lives. No specialist can move money, and no amount of delegation can route around the approval step. This is a security property of the topology, not a setting that can be misconfigured away.</p>
+<hr>
+<h2>5. Tool catalogue</h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Owner</th>
+<th>Effect</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>find_delayed_orders</code></td>
+<td>Operations</td>
+<td>read</td>
+<td>Orders past their estimated delivery date and not delivered</td>
+</tr>
+<tr>
+<td><code>search_orders</code></td>
+<td>Operations</td>
+<td>read</td>
+<td>Orders by status, customer or recency</td>
+</tr>
+<tr>
+<td><code>get_order</code></td>
+<td>Operations</td>
+<td>read</td>
+<td>One order in full: items, shipment, tickets, refunds</td>
+</tr>
+<tr>
+<td><code>track_shipment</code></td>
+<td>Operations</td>
+<td>read</td>
+<td>Shipment position, whether it is late, and by how many days</td>
+</tr>
+<tr>
+<td><code>search_tickets</code></td>
+<td>Operations</td>
+<td>read</td>
+<td>Support tickets by status, priority or category</td>
+</tr>
+<tr>
+<td><code>get_customer</code></td>
+<td>Operations</td>
+<td>read</td>
+<td>One customer with order and ticket history</td>
+</tr>
+<tr>
+<td><code>get_operations_summary</code></td>
+<td>Operations</td>
+<td>read</td>
+<td>Counts by status, delays by carrier, 14-day volume trend</td>
+</tr>
+<tr>
+<td><code>search_knowledge</code></td>
+<td>Knowledge</td>
+<td>read</td>
+<td>Hybrid retrieval over the company&#39;s documents</td>
+</tr>
+<tr>
+<td><code>issue_refund</code></td>
+<td><strong>Orchestrator</strong></td>
+<td><strong>write</strong></td>
+<td>Issues a refund. Requires human approval. Capped and idempotent.</td>
+</tr>
+</tbody></table>
+<p>Every tool validates its input with a schema, runs one bounded query, and returns structured data plus a one-line human summary. The model is instructed that tool results are the only source of truth and that it may not invent anything a tool did not return.</p>
+<hr>
+<h2>6. Generative UI</h2>
+<p>Relay does not describe an order in prose and hope the reader believes it. Each tool result is rendered as the thing it actually is.</p>
+<table>
+<thead>
+<tr>
+<th>Ask</th>
+<th>What appears</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>&quot;What is running late?&quot;</td>
+<td>A sortable table: order, customer, destination, carrier, status badge, days late, value</td>
+</tr>
+<tr>
+<td>&quot;What happened with HP-1042?&quot;</td>
+<td>An order record: line items, a shipment track with its stages, linked tickets, any refunds</td>
+</tr>
+<tr>
+<td>&quot;Give me an overview&quot;</td>
+<td>A dashboard: stat tiles, orders by status, delays by carrier, and a 14-day volume trend</td>
+</tr>
+<tr>
+<td>A policy question</td>
+<td>The cited passages themselves, each labelled with the document it came from and whether semantic or keyword search found it</td>
+</tr>
+</tbody></table>
+<p><strong>The model chooses which tool to call. The frontend owns how the result looks.</strong> That split matters: the output is always well-formed and on-brand no matter what the model does, and there is no way for a bad generation to produce a broken layout.</p>
+<p>The charts are hand-built inline SVG rather than a charting library, so they inherit the console&#39;s theme and are correct in light and dark without a second palette to maintain. The two series colours are validated for colourblind separation against both surfaces (CVD ΔE 15.5, normal-vision ΔE 20.9, contrast above 3:1) rather than chosen by eye, and every status colour ships with its label so identity is never carried by colour alone.</p>
+<h2>7. Retrieval</h2>
+<p>Documents are uploaded through the console — PDF, Markdown or plain text — then extracted, split into overlapping passages, embedded, and stored as vectors alongside the business data.</p>
+<p><strong>Embeddings run locally</strong>, inside the application process, using <code>all-MiniLM-L6-v2</code> at 384 dimensions. There is no embedding API key, no per-token cost, and <strong>the contents of an uploaded document never leave the server</strong>. For a client evaluating whether to hand over their internal policies, that last point is usually the deciding one.</p>
+<p>Retrieval is hybrid, because neither method is sufficient alone:</p>
+<ul>
+<li><strong>Vector similarity</strong> finds passages that mean the same thing in different words.</li>
+<li><strong>Postgres full-text</strong> finds exact terms — an SKU, a carrier code, a status string — that embeddings routinely miss.</li>
+<li><strong>Reciprocal rank fusion</strong> merges the two. A passage ranked well by either method rises; one ranked well by both rises further. RRF needs no score calibration between two incomparable systems, which is precisely why it is used here rather than a weighted blend.</li>
+</ul>
+<p>Retrieval is also directly inspectable: a preview panel in the console runs the same search the agent runs and shows which passages came back, which method found each one, and how long it took.</p>
+<hr>
+<h2>8. What it feels like in use</h2>
+<p>A real exchange, captured from the running system.</p>
+<p><strong>Operator:</strong> <em>&quot;Refund Danielle Okafor for HP-1042 in full, the rug was damaged in transit.&quot;</em></p>
+<ol>
+<li><p>The orchestrator opens both lines of inquiry at once: <em>&quot;I&#39;ll start by gathering the order facts and the applicable policy in parallel.&quot;</em></p>
+</li>
+<li><p><strong>Operations specialist</strong> is asked for the full order picture. It runs <code>get_order</code> <strong>(94ms)</strong> and <code>track_shipment</code> <strong>(69ms)</strong>, and reports: HP-1042, fulfilled, $537.00, Danielle Okafor, four days past estimate, carrier status <code>exception</code>.</p>
+</li>
+<li><p><strong>Knowledge specialist</strong> is asked what the policy says about damage in transit and what the approval ceiling is. It runs <code>search_knowledge</code> three times <strong>(227–230ms)</strong> across three documents.</p>
+</li>
+<li><p>The orchestrator synthesises, and catches a distinction nobody prompted it to look for:</p>
+<blockquote>
+<p><em>&quot;Note the delay nuance: the order is only 4 days past estimate, which alone would only justify the shipping charge refund under the 4–7 day tier. But the carrier has reported damage, so this is treated as lost/damaged in transit, triggering the full refund under section 5 regardless of the day count.&quot;</em></p>
+</blockquote>
+<blockquote>
+<p><em>&quot;Full refund approval limit is $600 for a support agent; this order is $537, i.e. under the $600 ceiling, no manager approval needed.&quot;</em></p>
+</blockquote>
+</li>
+<li><p><code>issue_refund</code> is called. <strong>It does not run.</strong> The console renders a confirmation card: order HP-1042, amount $537.00, and the reason citing Shipping &amp; Delivery Policy section 5 and Refund &amp; Returns Policy section 3. Two buttons.</p>
+</li>
+<li><p>The operator approves. The tool executes in <strong>47ms</strong>, writes the refund, and records the call in the audit log against the approver.</p>
+</li>
+</ol>
+<p>The result is a decision that would have taken a support agent several minutes and two browser tabs, made in about twenty seconds, with the policy citation attached and a human still holding the trigger.</p>
+<hr>
+<h2>9. Resilience, security and observability</h2>
+<ul>
+<li><strong>Grounding.</strong> The system prompt forbids stating any fact not returned by a tool. Specialists are instructed to say a lookup found nothing rather than fill the gap.</li>
+<li><strong>Bounded loops.</strong> The orchestrator stops after 8 steps, each specialist after 5. A confused turn cannot spend unbounded money.</li>
+<li><strong>Human approval on writes.</strong> Enforced by the runtime&#39;s approval mechanism, not by prompt instruction. A prompt can be talked around; this cannot.</li>
+<li><strong>Refund cap.</strong> A refund that would exceed the order total, less anything already refunded, is refused by the tool before it reaches the database.</li>
+<li><strong>Idempotency.</strong> Refunds carry a deterministic key derived from order, amount and reason. Approving the same refund twice is a no-op, not a second payout.</li>
+<li><strong>Full audit trail.</strong> Every tool call from every agent is recorded with its input, its result summary, its status and its latency, and is readable in the console.</li>
+<li><strong>Rate limiting.</strong> Per-IP limits on chat, upload and retrieval, because a public demo URL is effectively a public API key.</li>
+<li><strong>Schema validation</strong> at every boundary — tool inputs, request payloads, upload types and sizes.</li>
+<li><strong>Data locality.</strong> Uploaded document contents are embedded in-process and never sent to a third party.</li>
+<li><strong>Failure is legible.</strong> A tool error returns a typed result the agent explains, not a 500 that hangs the conversation.</li>
+</ul>
+<hr>
+<h2>10. Model independence</h2>
+<p>The tool layer, the approval policy and the audit trail are the system. The model is a swappable part, selected by an environment variable, currently supporting Anthropic Claude and DeepSeek.</p>
+<p>This matters commercially more than technically: a client already standardised on one provider does not have to be argued out of it, and cost per conversation can be tuned without touching the architecture.</p>
+<hr>
+<h2>11. Setup</h2>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Step</th>
+<th>Command</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>Install dependencies</td>
+<td><code>npm install</code></td>
+</tr>
+<tr>
+<td>2</td>
+<td>Configure</td>
+<td><code>cp .env.example .env</code> — set <code>RELAY_PROVIDER</code> and the matching API key</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Start PostgreSQL</td>
+<td><code>npm run db:up</code></td>
+</tr>
+<tr>
+<td>4</td>
+<td>Create the schema</td>
+<td><code>npm run db:push</code></td>
+</tr>
+<tr>
+<td>5</td>
+<td>Load the demo dataset</td>
+<td><code>npm run db:seed</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td>Run</td>
+<td><code>npm run dev</code></td>
+</tr>
+</tbody></table>
+<p>Deployment is self-hosted: a standalone Next.js build and a PostgreSQL container behind a reverse proxy. No managed platform is required and no vendor lock-in is introduced.</p>
+<hr>
+<h2>12. What&#39;s in the package</h2>
+<ul>
+<li>The full application source: orchestrator, specialists, tool layer, retrieval pipeline, console UI.</li>
+<li>PostgreSQL schema and a deterministic seed that reproduces the same dataset on every run.</li>
+<li>The document ingestion pipeline: PDF, Markdown and text, with local embedding.</li>
+<li>The audit subsystem.</li>
+<li>Docker Compose for local development and for the server.</li>
+<li>This document.</li>
+</ul>
+<hr>
+<h2>13. What this demonstrates</h2>
+<table>
+<thead>
+<tr>
+<th>Capability</th>
+<th>Where to look</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Multi-agent orchestration with scoped tools</td>
+<td>Section 4</td>
+</tr>
+<tr>
+<td>Generative UI: tables, records and charts, not prose</td>
+<td>Section 6</td>
+</tr>
+<tr>
+<td>Production RAG with hybrid retrieval</td>
+<td>Section 7</td>
+</tr>
+<tr>
+<td>Tool calling against a live database</td>
+<td>Section 5</td>
+</tr>
+<tr>
+<td>Human-in-the-loop control of write actions</td>
+<td>Sections 8 and 9</td>
+</tr>
+<tr>
+<td>Auditability and observability</td>
+<td>Section 9</td>
+</tr>
+<tr>
+<td>Document ingestion with data locality</td>
+<td>Section 7</td>
+</tr>
+<tr>
+<td>Provider independence</td>
+<td>Section 10</td>
+</tr>
+<tr>
+<td>Self-hosted deployment</td>
+<td>Section 11</td>
+</tr>
+</tbody></table>
+</div></body></html>
