@@ -1,0 +1,161 @@
+// Relay — operations agent over a real business dataset.
+// One datastore. Every table here is something the agent can read,
+// and exactly one thing it can write (Refund), always behind approval.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  phone     String?
+  city      String
+  state     String
+  country   String   @default("US")
+  createdAt DateTime @default(now())
+
+  orders  Order[]
+  tickets Ticket[]
+
+  @@index([name])
+}
+
+model Order {
+  id         String   @id @default(cuid())
+  number     String   @unique
+  customerId String
+  status     String // placed | paid | fulfilled | delivered | cancelled
+  channel    String // web | amazon | retail
+  totalCents Int
+  currency   String   @default("USD")
+  placedAt   DateTime
+
+  customer Customer    @relation(fields: [customerId], references: [id])
+  items    OrderItem[]
+  shipment Shipment?
+  tickets  Ticket[]
+  refunds  Refund[]
+
+  @@index([status])
+  @@index([placedAt])
+}
+
+model OrderItem {
+  id             String @id @default(cuid())
+  orderId        String
+  sku            String
+  name           String
+  quantity       Int
+  unitPriceCents Int
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model Shipment {
+  id                String    @id @default(cuid())
+  orderId           String    @unique
+  carrier           String // UPS | FedEx | USPS
+  trackingNumber    String    @unique
+  status            String // label_created | in_transit | out_for_delivery | delivered | exception | returned
+  shippedAt         DateTime?
+  estimatedDelivery DateTime?
+  deliveredAt       DateTime?
+  lastEvent         String?
+  lastEventAt       DateTime?
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+model Ticket {
+  id         String    @id @default(cuid())
+  number     String    @unique
+  orderId    String?
+  customerId String
+  subject    String
+  body       String
+  category   String // delivery | damage | refund | product | other
+  priority   String // low | normal | high | urgent
+  status     String // open | pending | resolved
+  openedAt   DateTime
+  resolvedAt DateTime?
+
+  order    Order?   @relation(fields: [orderId], references: [id])
+  customer Customer @relation(fields: [customerId], references: [id])
+
+  @@index([status])
+}
+
+// The single write path in the system. Never created without human approval.
+model Refund {
+  id             String   @id @default(cuid())
+  orderId        String
+  amountCents    Int
+  reason         String
+  status         String   @default("issued")
+  issuedAt       DateTime @default(now())
+  issuedBy       String // who approved it, recorded verbatim
+  idempotencyKey String   @unique
+
+  order Order @relation(fields: [orderId], references: [id])
+}
+
+// Every tool call the agent makes, readable by a human after the fact.
+// This is the audit trail the case study points at.
+model ToolCall {
+  id            String   @id @default(cuid())
+  sessionId     String
+  name          String
+  input         Json
+  outputSummary String
+  status        String // ok | error | denied
+  durationMs    Int
+  createdAt     DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+// ── Documents: what the agent knows beyond the database ─────────────────────
+// Uploaded PDFs and text files are chunked, embedded, and searched with a
+// hybrid of vector similarity and Postgres full-text. Same datastore as the
+// business data, so there is one place to back up and one place to explain.
+
+model Document {
+  id         String   @id @default(cuid())
+  title      String
+  filename   String
+  mimeType   String
+  sizeBytes  Int
+  category   String   @default("other") // policy | carrier | product | other
+  status     String   @default("ready") // processing | ready | failed
+  error      String?
+  chunkCount Int      @default(0)
+  uploadedAt DateTime @default(now())
+
+  chunks DocumentChunk[]
+}
+
+model DocumentChunk {
+  id         String @id @default(cuid())
+  documentId String
+  ordinal    Int
+  content    String
+  charCount  Int
+  // 384-dimensional vector from the local all-MiniLM-L6-v2 embedder.
+  // Prisma has no native vector type, so similarity search uses raw SQL.
+  embedding  Unsupported("vector(384)")?
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@unique([documentId, ordinal])
+  @@index([documentId])
+}

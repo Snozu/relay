@@ -1,0 +1,25 @@
+# Local development stack for Relay.
+# Production on the VPS uses the same Postgres image; see deploy/ for the app service.
+services:
+  postgres:
+    # pgvector image: Relay stores document embeddings alongside business data,
+    # so retrieval and operations share one datastore.
+    image: pgvector/pgvector:pg17
+    container_name: relay-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: relay
+      POSTGRES_PASSWORD: relay
+      POSTGRES_DB: relay
+    ports:
+      - "5440:5432"
+    volumes:
+      - relay_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U relay -d relay"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  relay_pgdata:
