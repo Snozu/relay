@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<title>Relay — MCP</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --ink: #090a0c;
+  --muted: #5f666f;
+  --accent: #315487;
+  --accent-bright: #5276b5;
+  --accent-soft: #dbe4ff;
+  --signal: #138b4e;
+  --write: #b23c26;
+  --write-soft: #fbe6e1;
+  --border: #d6dadd;
+  --surface: #f3f5f6;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Onest', -apple-system, system-ui, sans-serif;
+  color: var(--ink);
+  line-height: 1.6;
+  font-size: 10.5pt;
+  margin: 0;
+  padding: 0;
+}
+
+.page { max-width: 46rem; margin: 0 auto; padding: 0 8mm; }
+
+h1 {
+  font-size: 30pt;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  font-weight: 700;
+  margin: 0 0 .4rem;
+}
+h1 + p strong { font-size: 12.5pt; font-weight: 600; line-height: 1.35; display: block; }
+
+h2 {
+  font-size: 15pt;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+  margin: 2.1rem 0 .7rem;
+  padding-top: .7rem;
+  border-top: 1px solid var(--border);
+  page-break-after: avoid;
+}
+h3 { font-size: 11.5pt; font-weight: 600; margin: 1.3rem 0 .4rem; page-break-after: avoid; }
+
+p { margin: 0 0 .75rem; }
+strong { font-weight: 600; }
+
+a { color: var(--accent); text-decoration: none; }
+
+ul, ol { margin: 0 0 .8rem; padding-left: 1.1rem; }
+li { margin-bottom: .3rem; }
+
+/* The lede line under the title */
+blockquote {
+  margin: 1.1rem 0;
+  padding: .75rem 1rem;
+  background: var(--write-soft);
+  border-left: 3px solid var(--write);
+  border-radius: 0 4px 4px 0;
+  page-break-inside: avoid;
+}
+blockquote p { margin: 0; font-size: 9.5pt; }
+h2 + p + blockquote, h2 ~ blockquote {
+  background: var(--surface);
+  border-left-color: var(--accent-bright);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: .8rem 0 1.1rem;
+  font-size: 9pt;
+  page-break-inside: avoid;
+}
+th {
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 1.5px solid var(--ink);
+  padding: .4rem .5rem;
+}
+td { border-bottom: 1px solid var(--border); padding: .4rem .5rem; vertical-align: top; }
+tr:nth-child(even) td { background: #fafbfc; }
+
+code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: .87em;
+  background: var(--surface);
+  padding: .08em .32em;
+  border-radius: 3px;
+}
+td code { background: none; padding: 0; }
+
+pre {
+  background: var(--ink);
+  color: #eceef0;
+  padding: 1rem 1.1rem;
+  border-radius: 5px;
+  overflow-x: auto;
+  font-size: 7.6pt;
+  line-height: 1.5;
+  page-break-inside: avoid;
+}
+pre code { background: none; color: inherit; padding: 0; font-size: inherit; }
+
+img {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  margin: .8rem 0 .4rem;
+  page-break-inside: avoid;
+}
+/* Caption = the paragraph immediately after an image paragraph. Scoped tightly
+   so ordinary italics inside body text are left alone. */
+p:has(> img) + p em {
+  display: block;
+  font-size: 8.5pt;
+  color: var(--muted);
+  font-style: normal;
+  line-height: 1.45;
+  margin-bottom: 1rem;
+}
+
+hr { border: 0; border-top: 1px solid var(--border); margin: 1.6rem 0; display: none; }
+
+@page { size: A4; margin: 15mm 10mm 14mm; }
+@media print { body { font-size: 10pt; } }
+</style>
+</head><body><div class="page"><h1>Exponer Relay por MCP</h1>
+<p><strong>Cómo se construyó el endpoint <code>/api/mcp</code>, qué expone y qué deja fuera a propósito.</strong></p>
+<p>Un recorrido para quien tiene que explicarlo en una llamada, no solo publicarlo.</p>
+<hr>
+<h2>1. Qué es MCP, en un párrafo</h2>
+<p>Model Context Protocol es una forma estándar de que una aplicación de IA descubra y llame herramientas que viven en otro lado. Antes, cada integración era a la medida: si querías que Claude Desktop leyera tus pedidos, alguien escribía un plugin para Claude, luego otro para Cursor, luego otro más. MCP lo reemplaza con un solo contrato — un servidor publica sus tools y cualquier cliente compatible las puede llamar.</p>
+<blockquote>
+<p>🗣 <em>&quot;MCP is a standard plug. We expose our tools once, and any AI tool that speaks it can use them — Claude Desktop, Cursor, or an agent someone builds next year.&quot;</em></p>
+</blockquote>
+<h2>2. Por qué expusimos Relay así</h2>
+<p>Relay ya tenía una capa de tools funcionando: nueve funciones con esquema, validación y auditoría, conectadas a una base de datos viva. Esas tools solo se alcanzaban desde el chat de Relay.</p>
+<p>Exponerlas por MCP cuesta unas cuarenta líneas y cambia la oferta:</p>
+<ul>
+<li>El cliente sigue trabajando en la herramienta que ya usa. Sin pestaña nueva, sin login nuevo.</li>
+<li>Las tools dejan de ser una función de nuestro producto y se vuelven <strong>su</strong> capacidad.</li>
+<li>Cualquier cliente MCP futuro funciona sin que nosotros publiquemos nada.</li>
+</ul>
+<p><strong>La versión comercial de esa frase:</strong></p>
+<blockquote>
+<p>🗣 <em>&quot;You don&#39;t have to move into our interface. We can put these tools inside the one your team already has open.&quot;</em></p>
+</blockquote>
+<h2>3. La decisión de diseño que importa</h2>
+<p>La capa de tools tiene ocho de lectura y una de escritura. <strong>Solo se exponen las de lectura.</strong></p>
+<p><code>issue_refund</code> está ausente, y no porque fuera difícil. La compuerta de aprobación humana vive dentro de la interfaz de Relay — la tarjeta que muestra el monto y espera a que alguien apruebe. Si la tool de reembolso fuera alcanzable por MCP, un cliente externo podría llamarla directo y la tarjeta nunca se renderizaría. La propiedad de seguridad desaparecería, y nada en el protocolo lo habría impedido.</p>
+<p>Así que la frontera se dibuja por lo que existe en cada borde, no por configuración:</p>
+<table>
+<thead>
+<tr>
+<th>Dónde</th>
+<th>Lecturas</th>
+<th>Escritura</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Chat propio de Relay</td>
+<td>sí</td>
+<td>sí, detrás de la compuerta</td>
+</tr>
+<tr>
+<td>Especialistas (subagentes)</td>
+<td>sí</td>
+<td><strong>no</strong> — nunca se delega</td>
+</tr>
+<tr>
+<td>Endpoint MCP</td>
+<td>sí</td>
+<td><strong>no</strong> — nunca se expone</td>
+</tr>
+</tbody></table>
+<p>Tres lugares distintos, una sola regla: <strong>la escritura solo existe donde está la compuerta.</strong></p>
+<blockquote>
+<p>🗣 <em>&quot;Reads are safe to federate. The write isn&#39;t, so it stays where the human approval lives. That&#39;s not a setting — the tool simply isn&#39;t there.&quot;</em></p>
+</blockquote>
+<h2>4. Cómo se construyó</h2>
+<p>Un solo archivo de ruta. Las tools ya existían, así que el trabajo fue adaptarlas al protocolo.</p>
+<h3>4.1 Reutilizar las tools existentes</h3>
+<p>Las definiciones ya son <code>{ description, inputSchema, execute }</code>. El servidor MCP registra cada una:</p>
+<pre><code class="language-ts">// src/app/api/mcp/route.ts
+import { createMcpHandler } from &quot;mcp-handler&quot;;
+import { createBusinessTools, createKnowledgeTools } from &quot;@/lib/tools&quot;;
+
+// Solo tools de lectura. La ruta de escritura está ausente a propósito.
+const EXPOSED = { ...createBusinessTools(SESSION), ...createKnowledgeTools(SESSION) };
+</code></pre>
+<p>Fíjate en lo que <strong>no</strong> se importa: <code>createWriteTools</code>. Esa única omisión es la frontera de seguridad. Es una línea, es greppable, y un revisor la verifica en cinco segundos — que es justo la propiedad que quieres en un control de seguridad.</p>
+<h3>4.2 Registrar cada tool</h3>
+<pre><code class="language-ts">const handler = createMcpHandler((server) =&gt; {
+  for (const [name, definition] of Object.entries(EXPOSED)) {
+    server.registerTool(
+      name,
+      { description: tool.description, inputSchema: tool.inputSchema },
+      async (input) =&gt; {
+        const result = await tool.execute(input, {});
+        return {
+          content: [
+            { type: &quot;text&quot;, text: result?.summary ?? &quot;No result.&quot; },
+            { type: &quot;text&quot;, text: JSON.stringify(result, null, 2) },
+          ],
+        };
+      },
+    );
+  }
+});
+</code></pre>
+<p>Dos bloques de contenido a propósito: primero el resumen de una línea, para que un cliente que solo renderiza texto igual muestre algo legible, y luego el payload estructurado completo para el que sí lo puede usar.</p>
+<h3>4.3 Instrucciones para el modelo que se conecta</h3>
+<p>Un servidor MCP puede enviar instrucciones que el cliente le pasa a su modelo. Las de Relay llevan la misma regla de fundamentación que tienen los agentes internos:</p>
+<blockquote>
+<p><em>&quot;Every fact you report must come from a tool result — do not infer or invent order numbers, amounts or policy rules. Write actions are not available here by design.&quot;</em></p>
+</blockquote>
+<p>Sin esto, un modelo conectado desde fuera no tiene nada de la disciplina de prompt de Relay y va a rellenar huecos con gusto.</p>
+<h3>4.4 Exportar como métodos HTTP</h3>
+<pre><code class="language-ts">export { handler as GET, handler as POST, handler as DELETE };
+</code></pre>
+<p>MCP sobre HTTP en streaming usa los tres: POST para llamadas, GET para el stream de eventos, DELETE para cerrar sesión.</p>
+<h2>5. Conectar un cliente</h2>
+<pre><code class="language-jsonc">// claude_desktop_config.json
+{
+  &quot;mcpServers&quot;: {
+    &quot;relay&quot;: { &quot;url&quot;: &quot;http://localhost:3000/api/mcp&quot; }
+  }
+}
+</code></pre>
+<p>Reinicias el cliente y las tools aparecen.</p>
+<h2>6. Verificarlo sin cliente</h2>
+<p>Dos llamadas de curl prueban que el endpoint funciona. Útil en una llamada cuando no quieres reiniciarle la app a nadie.</p>
+<p><strong>Listar las tools:</strong></p>
+<pre><code class="language-bash">curl -s -X POST http://localhost:3000/api/mcp \
+  -H &#39;content-type: application/json&#39; \
+  -H &#39;accept: application/json, text/event-stream&#39; \
+  -d &#39;{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;tools/list&quot;}&#39;
+</code></pre>
+<p>Regresa las ocho de lectura:</p>
+<pre><code>find_delayed_orders · get_customer · get_operations_summary · get_order
+search_knowledge · search_orders · search_tickets · track_shipment
+</code></pre>
+<p><strong>Llamar una:</strong></p>
+<pre><code class="language-bash">curl -s -X POST http://localhost:3000/api/mcp \
+  -H &#39;content-type: application/json&#39; \
+  -H &#39;accept: application/json, text/event-stream&#39; \
+  -d &#39;{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:2,&quot;method&quot;:&quot;tools/call&quot;,
+       &quot;params&quot;:{&quot;name&quot;:&quot;get_order&quot;,&quot;arguments&quot;:{&quot;orderNumber&quot;:&quot;HP-1042&quot;}}}&#39;
+</code></pre>
+<p>Regresa:</p>
+<pre><code>&quot;HP-1042 — fulfilled, $537.00, Danielle Okafor&quot;
+</code></pre>
+<p><strong>La verificación que importa</strong> — confirmar que la tool de escritura no se alcanza:</p>
+<pre><code class="language-bash">curl -s -X POST http://localhost:3000/api/mcp \
+  -H &#39;content-type: application/json&#39; \
+  -H &#39;accept: application/json, text/event-stream&#39; \
+  -d &#39;{&quot;jsonrpc&quot;:&quot;2.0&quot;,&quot;id&quot;:1,&quot;method&quot;:&quot;tools/list&quot;}&#39; | grep -c issue_refund
+# → 0
+</code></pre>
+<p>Corre esa frente a un cliente preocupado por seguridad. Una ausencia demostrada vale más que un párrafo asegurándola.</p>
+<h2>7. Lo que no construimos, y por qué</h2>
+<p><strong>Nada de generar MCP desde OpenAPI.</strong> Convertir una especificación arbitraria en un servidor MCP generado es otro producto, con una superficie mucho mayor: intermediación de auth, custodia de credenciales, versionado, publicación. Relay expone sus propias tools, que ya valida y audita.</p>
+<p><strong>Sin autenticación todavía.</strong> El endpoint está abierto, que es correcto para una demo en localhost e incorrecto para producción. <code>mcp-handler</code> trae <code>withMcpAuth</code> para verificar tokens bearer; un despliegue real envuelve el handler ahí y acota los tokens por inquilino. Dilo derecho si un cliente pregunta — asegurar que una demo está endurecida para producción es la forma más rápida de perder la sala.</p>
+<p><strong>Ninguna tool de escritura, nunca, sin compuerta.</strong> Si un cliente pide escritura por MCP, la respuesta no es &quot;se la exponemos&quot; — es que el paso de aprobación tiene que moverse con ella. En algún lado un humano sigue apretando el botón.</p>
+<h2>8. Dónde ver el código</h2>
+<table>
+<thead>
+<tr>
+<th>Archivo</th>
+<th>Qué tiene</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>src/app/api/mcp/route.ts</code></td>
+<td>El servidor MCP completo, unas cuarenta líneas</td>
+</tr>
+<tr>
+<td><code>src/lib/tools.ts</code></td>
+<td>Las definiciones de tools, compartidas con los agentes</td>
+</tr>
+<tr>
+<td><code>src/lib/audit.ts</code></td>
+<td>El registro — las llamadas MCP se auditan como cualquier otra</td>
+</tr>
+</tbody></table>
+<p>Las llamadas que llegan por MCP caen en la misma bitácora que las del chat, bajo el id de sesión <code>mcp</code>. Abre la pestaña Auditoría después de que un cliente conectado use una tool y ahí está.</p>
+</div></body></html>
