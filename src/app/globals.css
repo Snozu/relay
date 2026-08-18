@@ -1,0 +1,156 @@
+@import "tailwindcss";
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Relay — visual identity
+
+   The palette is drawn from the ZulIA house style: cool paper, near-black ink,
+   a cornflower blue that carries emphasis, and a green that means healthy.
+   Relay adds one colour of its own — a warm coral reserved exclusively for
+   anything that writes. Nothing else is coloured, so colour always means
+   something.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --background: #f3f5f6;
+  --surface: #ffffff;
+  --surface-muted: #eaedef;
+  --border: #d6dadd;
+  --border-strong: #bcc3c8;
+  --foreground: #090a0c;
+  --muted: #5f666f;
+  --accent: #315487;
+  --accent-bright: #5276b5;
+  --accent-soft: #dbe4ff;
+  --accent-contrast: #ffffff;
+  --signal: #138b4e;
+  --signal-soft: #d9f2e5;
+  --write: #b23c26;
+  --write-soft: #fbe6e1;
+  --danger: #b23c26;
+  --grid: #e3e7e9;
+  /* Chart series. Validated for colourblind separation against the chart
+     surface: CVD ΔE 15.6, normal-vision ΔE 24.6, contrast ≥ 3:1. Do not
+     substitute by eye — re-run the palette validator. */
+  --series-1: #2f5aa8;
+  --series-2: #b23c26;
+  --axis: #c8ced3;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0b0c0e;
+    --surface: #131519;
+    --surface-muted: #191c21;
+    --border: #262a30;
+    --border-strong: #363c44;
+    --foreground: #eceef0;
+    --muted: #8b939d;
+    --accent: #7fa0dd;
+    --accent-bright: #9db8ea;
+    --accent-soft: #16203a;
+    --accent-contrast: #090a0c;
+    --signal: #24b879;
+    --signal-soft: #0f2b1f;
+    --write: #ef8a72;
+    --write-soft: #2c1712;
+    --danger: #ef8a72;
+    --grid: #16191d;
+    /* Dark steps are selected, not flipped: same checks against the dark
+       surface (CVD ΔE 15.5, normal-vision ΔE 20.9). */
+    --series-1: #5f8bd8;
+    --series-2: #d97354;
+    --axis: #333a42;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-bright: var(--accent-bright);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-signal: var(--signal);
+  --color-signal-soft: var(--signal-soft);
+  --color-write: var(--write);
+  --color-write-soft: var(--write-soft);
+  --color-danger: var(--danger);
+  --color-series-1: var(--series-1);
+  --color-series-2: var(--series-2);
+  --color-axis: var(--axis);
+
+  --font-sans: var(--font-onest), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  --radius-console: 5px;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-onest), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Micro-labels. Every section header in the console uses this: mono, uppercase,
+   wide-tracked. It is the single most recognisable texture in the interface. */
+.label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Tabular figures everywhere a number can change, so counters do not jitter. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Faint engineering grid, used behind empty states. */
+.grid-field {
+  background-image:
+    linear-gradient(to right, var(--grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+/* Wide content scrolls inside its own box; the page never scrolls sideways. */
+.scroll-x {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border: 3px solid var(--background);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+@keyframes relay-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+.animate-relay-pulse {
+  animation: relay-pulse 1.3s ease-in-out infinite;
+}
+
+@keyframes relay-sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(400%); }
+}
+.animate-relay-sweep {
+  animation: relay-sweep 1.6s ease-in-out infinite;
+}
