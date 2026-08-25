@@ -19,8 +19,13 @@ const EDITIONS = [
   { md: "mcp-exposure.md", html: "mcp-exposure.html", pdf: "Relay-MCP-EN.pdf", lang: "en" },
   { md: "mcp-exposure.es.md", html: "mcp-exposure.es.html", pdf: "Relay-MCP-ES.pdf", lang: "es" },
   // Internal — lives under private/, never published.
+  { md: "../private/docs/jorge-onboarding.md", html: "../private/docs/jorge-onboarding.html", pdf: "../private/docs/Relay-Jorge-Guide-EN.pdf", lang: "en" },
   { md: "../private/docs/jorge-onboarding.es.md", html: "../private/docs/jorge-onboarding.es.html", pdf: "../private/docs/Relay-Guia-Jorge-ES.pdf", lang: "es" },
 ];
+
+// Optional substring filter, so rebuilding one document does not churn the rest:
+//   npm run docs:pdf -- jorge
+const FILTER = process.argv[2] ?? "";
 
 // Any Chromium-family browser can print the HTML. Take the first one present.
 const CANDIDATES = [
@@ -174,7 +179,7 @@ if (!browser) {
 
 marked.setOptions({ gfm: true });
 
-for (const edition of EDITIONS) {
+for (const edition of EDITIONS.filter((e) => e.md.includes(FILTER))) {
   const srcPath = join(ROOT, "docs", edition.md);
   const htmlPath = join(ROOT, "docs", edition.html);
   const pdfPath = join(ROOT, "docs", edition.pdf);
@@ -191,8 +196,10 @@ for (const edition of EDITIONS) {
   const body = marked.parse(source);
   const title = edition.md.startsWith("mcp")
     ? "Relay \u2014 MCP"
-    : edition.md.startsWith("jorge")
-      ? "Relay \u2014 Gu\u00eda para Jorge"
+    : edition.md.includes("jorge")
+      ? edition.lang === "es"
+        ? "Relay \u2014 Gu\u00eda para Jorge"
+        : "Relay \u2014 Jorge's Guide"
     : edition.lang === "es"
       ? "Relay \u2014 Agente de Operaciones \u00b7 Caso de estudio"
       : "Relay \u2014 Operations Agent \u00b7 Case Study";
