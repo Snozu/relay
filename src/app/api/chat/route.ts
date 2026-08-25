@@ -21,7 +21,14 @@ export async function POST(req: Request) {
   const missing = missingKey(override);
   if (missing) {
     return Response.json(
-      { error: `${missing} is not set. Copy .env.example to .env and add your key.` },
+      {
+        // The hosted demo carries no provider credentials of its own: every
+        // visitor spends their own tokens. Locally it is a setup step.
+        error:
+          process.env.NODE_ENV === "production"
+            ? `This deployment holds no model key. Open Settings and add your own ${missing.replace("_API_KEY", "").toLowerCase()} key — it stays in your browser and is used for your requests only.`
+            : `${missing} is not set. Copy .env.example to .env and add your key.`,
+      },
       { status: 500 },
     );
   }

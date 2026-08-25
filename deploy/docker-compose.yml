@@ -1,0 +1,127 @@
+# Relay in production, on a VPS behind Traefik.
+#
+# Isolation from whatever else the host already runs:
+#   · Its own project name, directory and volumes. `docker compose up` here
+#     touches nothing but Relay.
+#   · Postgres sits on a network marked `internal: true` — no route to the
+#     internet, no published port. Only the app container can reach it.
+#   · Traefik router names are prefixed `relay-`, so they cannot collide with
+#     routers already defined on the host.
+name: relay
+
+services:
+  app:
+    build:
+      context: ..
+      target: runner
+      args:
+        # Inlined into the client bundle; it has to be known at build time.
+        NEXT_PUBLIC_APP_URL: ${RELAY_PUBLIC_URL:?set RELAY_PUBLIC_URL in .env}
+    image: relay-app
+    container_name: relay-app
+    restart: always
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-relay}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-relay}
+      NEXT_PUBLIC_APP_URL: ${RELAY_PUBLIC_URL}
+      RELAY_PROVIDER: ${RELAY_PROVIDER:-deepseek}
+      RELAY_MODEL: ${RELAY_MODEL:-}
+      # A public demo URL is effectively a public API key. These are the only
+      # thing standing between the deployment and someone else's bill.
+      RELAY_RATE_LIMIT_PER_MINUTE: ${RELAY_RATE_LIMIT_PER_MINUTE:-12}
+      RELAY_MAX_TOKENS_PER_DAY: ${RELAY_MAX_TOKENS_PER_DAY:-2000000}
+      # No provider key on purpose: every visitor brings their own in the
+      # settings panel. Set DEEPSEEK_API_KEY, ANTHROPIC_API_KEY or OPENAI_API_KEY
+      # here only for
+      # a deployment that is meant to spend the host's tokens.
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - root_default   # where Traefik listens
+      - internal       # where Postgres listens
+    security_opt:
+      - no-new-privileges:true
+    # The embedder holds ~450 MB of model weights in memory. The ceiling keeps
+    # a bad day for Relay from becoming a bad day for the rest of the host.
+    mem_limit: 2500m
+    labels:
+      - "traefik.enable=true"
+      # The app sits on two networks. Without this, Traefik may pick the
+      # private one, which it cannot reach — the symptom is a 504 on a
+      # container that is perfectly healthy.
+      - "traefik.docker.network=root_default"
+      - "traefik.http.services.relay.loadbalancer.server.port=3000"
+      # One hostname by default; RELAY_RULE overrides it to serve several at
+      # once — useful while a new domain propagates and the old URL must stay up.
+      - "traefik.http.routers.relay.rule=${RELAY_RULE:-Host(`${RELAY_HOST:?set RELAY_HOST in .env}`)}"
+      - "traefik.http.routers.relay.entrypoints=web,websecure"
+      - "traefik.http.routers.relay.tls=true"
+      - "traefik.http.routers.relay.tls.certresolver=${RELAY_CERT_RESOLVER:-mytlschallenge}"
+      - "traefik.http.routers.relay.service=relay"
+      - "traefik.http.routers.relay.middlewares=relay-headers"
+      # A demo shown to prospects has no business in a search index.
+      - "traefik.http.middlewares.relay-headers.headers.customresponseheaders.X-Robots-Tag=noindex, nofollow"
+      - "traefik.http.middlewares.relay-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.relay-headers.headers.referrerPolicy=strict-origin-when-cross-origin"
+
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: relay-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-relay}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-relay}
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Enables the vector extension on first initialisation.
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    # No `ports:` on purpose — not on the host, not on the internet.
+    networks:
+      - internal
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 768m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-relay} -d ${POSTGRES_DB:-relay}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    labels:
+      - "traefik.enable=false"
+
+  # One-off: push the schema and load the demo data.
+  #   docker compose --profile seed run --rm seed
+  # Carries prisma and tsx, which the runtime image does not. Never runs as a
+  # service — the profile keeps `up` from starting it.
+  seed:
+    profiles: ["seed"]
+    build:
+      context: ..
+      target: tooling
+      # Same argument as `app`, so this shares the builder layers instead of
+      # compiling the application a second time.
+      args:
+        NEXT_PUBLIC_APP_URL: ${RELAY_PUBLIC_URL}
+    image: relay-tooling
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-relay}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-relay}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - internal
+    restart: "no"
+
+networks:
+  # Traefik's network. External: this file neither creates nor removes it.
+  root_default:
+    external: true
+  # Private to Relay. `internal: true` means no route out.
+  internal:
+
+volumes:
+  pgdata:
