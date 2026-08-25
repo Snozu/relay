@@ -210,10 +210,13 @@ export const STRINGS = {
     apiKey: "API key",
     useKey: "Use key",
     removeKey: "remove",
-    modelOptional: "Model (optional)",
+    model: "Model",
+    modelCustom: "Other…",
+    modelCustomPlaceholder: "Model id",
+    providerDetected: (p: string) => `That key looks like ${p}. Provider selected for you.`,
     keyPrivacy:
       "Stored in this browser only, sent with each request and forwarded to the provider it belongs to. Never written to the database, never logged, never in the audit trail.",
-    getKey: (p: string) => `Get a ${p} key`,
+    getKey: (p: string) => `Get a key from ${p}`,
     settingsSaved: "Saved.",
 
     preparing: "preparing",
@@ -422,7 +425,10 @@ export const STRINGS = {
     apiKey: "API key",
     useKey: "Usar key",
     removeKey: "quitar",
-    modelOptional: "Modelo (opcional)",
+    model: "Modelo",
+    modelCustom: "Otro…",
+    modelCustomPlaceholder: "ID del modelo",
+    providerDetected: (p: string) => `Esa key parece de ${p}. Se seleccionó el proveedor por ti.`,
     keyPrivacy:
       "Se guarda solo en este navegador, se manda con cada petición y se reenvía únicamente al proveedor al que pertenece. Nunca se escribe en la base de datos, ni en logs, ni en la auditoría.",
     getKey: (p: string) => `Consigue una key de ${p}`,

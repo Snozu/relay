@@ -14,9 +14,13 @@
  * for a demo and is stated plainly in the panel. A production deployment would
  * hold provider credentials server-side per tenant instead.
  */
+import type { ProviderId } from "@/lib/providers";
+
 export type RelaySettings = {
-  provider: "deepseek" | "anthropic" | "";
+  /** Empty means "whatever this deployment is configured with". */
+  provider: ProviderId | "";
   apiKey: string;
+  /** A model id from the provider's catalogue, or one typed by hand. */
   model: string;
 };
 

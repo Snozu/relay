@@ -1,5 +1,6 @@
 import { db } from "@/lib/db";
 import { activeProvider } from "@/lib/model";
+import { defaultModelFor } from "@/lib/providers";
 
 /** Everything the console header and the Data tab need, in one round trip. */
 export async function GET() {
@@ -25,7 +26,7 @@ export async function GET() {
 
   return Response.json({
     provider: activeProvider(),
-    model: process.env.RELAY_MODEL || (activeProvider() === "deepseek" ? "deepseek-chat" : "claude-sonnet-5"),
+    model: process.env.RELAY_MODEL || defaultModelFor(activeProvider()),
     business: { orders, customers, tickets, shipments, refunds, delayed },
     knowledge: { documents, chunks },
     activity: { toolCalls, avgMs: Math.round(latency._avg.durationMs ?? 0) },

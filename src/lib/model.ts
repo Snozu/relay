@@ -1,6 +1,14 @@
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createDeepSeek } from "@ai-sdk/deepseek";
+import { createOpenAI } from "@ai-sdk/openai";
 import type { LanguageModel } from "ai";
+import {
+  DEFAULT_PROVIDER,
+  PROVIDERS,
+  defaultModelFor,
+  providerSpec,
+  type ProviderId,
+} from "@/lib/providers";
 
 /**
  * Relay is not tied to one model vendor.
@@ -17,18 +25,12 @@ import type { LanguageModel } from "ai";
  * A request-supplied key is used for that one request and then discarded. It is
  * never written to disk, never logged, never placed in the audit trail, and
  * never sent anywhere except the model provider it belongs to.
+ *
+ * Which providers exist and which models each one offers lives in
+ * `providers.ts`, shared with the settings panel so the dropdown and the server
+ * can never disagree.
  */
-export type ProviderName = "deepseek" | "anthropic";
-
-const DEFAULT_MODEL: Record<ProviderName, string> = {
-  deepseek: "deepseek-chat",
-  anthropic: "claude-sonnet-5",
-};
-
-const KEY_ENV: Record<ProviderName, string> = {
-  deepseek: "DEEPSEEK_API_KEY",
-  anthropic: "ANTHROPIC_API_KEY",
-};
+export type ProviderName = ProviderId;
 
 /** Shape a caller may supply per request, from the console's settings panel. */
 export type ModelOverride = {
@@ -38,11 +40,12 @@ export type ModelOverride = {
 };
 
 function normalise(provider: string | null | undefined): ProviderName {
-  return provider?.toLowerCase() === "anthropic" ? "anthropic" : "deepseek";
+  const id = provider?.toLowerCase();
+  return PROVIDERS.some((p) => p.id === id) ? (id as ProviderName) : DEFAULT_PROVIDER;
 }
 
 export function activeProvider(override?: ModelOverride): ProviderName {
-  return normalise(override?.provider ?? process.env.RELAY_PROVIDER ?? "deepseek");
+  return normalise(override?.provider ?? process.env.RELAY_PROVIDER ?? DEFAULT_PROVIDER);
 }
 
 /**
@@ -51,8 +54,8 @@ export function activeProvider(override?: ModelOverride): ProviderName {
  */
 export function missingKey(override?: ModelOverride): string | null {
   if (override?.apiKey) return null;
-  const provider = activeProvider(override);
-  return process.env[KEY_ENV[provider]] ? null : KEY_ENV[provider];
+  const envVar = providerSpec(activeProvider(override)).envVar;
+  return process.env[envVar] ? null : envVar;
 }
 
 export function resolveModel(override?: ModelOverride): {
@@ -62,13 +65,18 @@ export function resolveModel(override?: ModelOverride): {
   usingOwnKey: boolean;
 } {
   const provider = activeProvider(override);
-  const modelId = override?.model || process.env.RELAY_MODEL || DEFAULT_MODEL[provider];
-  const apiKey = override?.apiKey || process.env[KEY_ENV[provider]];
+  // A model id only travels with the provider it belongs to: a stale
+  // `claude-sonnet-5` left in localStorage must not follow a switch to OpenAI.
+  const requested = override?.provider ? override?.model : override?.model || process.env.RELAY_MODEL;
+  const modelId = requested || defaultModelFor(provider);
+  const apiKey = override?.apiKey || process.env[providerSpec(provider).envVar];
 
   const model =
     provider === "anthropic"
       ? createAnthropic({ apiKey })(modelId)
-      : createDeepSeek({ apiKey })(modelId);
+      : provider === "openai"
+        ? createOpenAI({ apiKey })(modelId)
+        : createDeepSeek({ apiKey })(modelId);
 
   return { model, provider, modelId, usingOwnKey: Boolean(override?.apiKey) };
 }

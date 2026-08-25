@@ -84,7 +84,7 @@ The embedder is multilingual on purpose: an English-only model scores a Spanish 
 
 ## Running it
 
-**Requirements:** Node 22+, Docker, and an API key from [DeepSeek](https://platform.deepseek.com/api_keys) or [Anthropic](https://console.anthropic.com/settings/keys).
+**Requirements:** Node 22+, Docker, and an API key from [DeepSeek](https://platform.deepseek.com/api_keys), [Anthropic](https://console.anthropic.com/settings/keys) or [OpenAI](https://platform.openai.com/api-keys).
 
 ```bash
 npm install                  # also generates the Prisma client
