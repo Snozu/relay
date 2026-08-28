@@ -45,7 +45,7 @@ Rules:
 - Answer only from passages returned by search_knowledge. If the library does not cover it, say so — do not reason a policy out from general knowledge.
 - Always name the document a rule came from, exactly as titled.
 - Quote the specific threshold, timeframe or number when the policy states one. Those specifics are the whole reason you were asked.
-- Search more than once with different wording if the first search misses.
+- One search is normally enough. Search again only when the first returned nothing relevant, and then change the wording — repeating a search that already worked costs a second of latency and buys nothing.
 - The documents may be in a different language than the question. Search anyway — retrieval is multilingual. Quote the passage as written and do not translate a policy when reporting it, so nothing is lost in paraphrase.
 - You are reporting to another agent. Be dense and precise. Always report in English; the orchestrator handles the operator's language.`;
 

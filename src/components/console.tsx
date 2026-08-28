@@ -37,6 +37,27 @@ type ToolPart = {
 
 const isToolPart = (p: { type: string }): p is ToolPart => p.type.startsWith("tool-");
 
+/**
+ * One render per distinct result.
+ *
+ * A specialist is told to search again with different wording when the first
+ * attempt misses. When it does that and both attempts hit, it returns two tool
+ * results holding the same passages — and the conversation showed the same
+ * three cards twice in a row. Identical output collapses to one card; a second
+ * call that actually found something different still gets its own.
+ */
+function dedupeRenders(parts: ToolPart[]): ToolPart[] {
+  const seen = new Set<string>();
+  return parts.filter((n) => {
+    const name = n.type.replace(/^tool-/, "");
+    if (n.state !== "output-available" || !HAS_RENDER.has(name)) return false;
+    const key = `${name}:${JSON.stringify(n.output ?? null)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export function Console() {
   const { locale, setLocale, t } = useLocale();
   const [input, setInput] = useState("");
@@ -263,12 +284,7 @@ export function Console() {
                               errorText={part.errorText}
                             />
 
-                            {nested
-                              .filter(
-                                (n) =>
-                                  n.state === "output-available" &&
-                                  HAS_RENDER.has(n.type.replace(/^tool-/, "")),
-                              )
+                            {dedupeRenders(nested)
                               .map((n) => (
                                 <ToolRender
                                   key={n.toolCallId}
