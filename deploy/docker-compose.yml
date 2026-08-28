@@ -29,10 +29,14 @@ services:
       # thing standing between the deployment and someone else's bill.
       RELAY_RATE_LIMIT_PER_MINUTE: ${RELAY_RATE_LIMIT_PER_MINUTE:-12}
       RELAY_MAX_TOKENS_PER_DAY: ${RELAY_MAX_TOKENS_PER_DAY:-2000000}
-      # No provider key on purpose: every visitor brings their own in the
-      # settings panel. Set DEEPSEEK_API_KEY, ANTHROPIC_API_KEY or OPENAI_API_KEY
-      # here only for
-      # a deployment that is meant to spend the host's tokens.
+      # The fallback credentials, used only when a visitor supplies no key of
+      # their own. Leave them unset in deploy/.env and the deployment spends
+      # nothing: the console asks every visitor for a key instead. Set the one
+      # matching RELAY_PROVIDER and the URL becomes a spending endpoint —
+      # the rate limit above is then the only thing between it and your bill.
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy
