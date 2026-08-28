@@ -356,11 +356,44 @@ function CustomerCard({ customer }: { customer: Any }) {
   );
 }
 
+/** How many cited passages belong in the conversation. */
+const MAX_PASSAGES = 3;
+
+/**
+ * A chunk is cut to fit an embedding window, not to read well.
+ *
+ * It routinely opens halfway through a word — "r than a carrier incident" —
+ * and carries the markdown scaffolding of the document it came from. Quoting
+ * that verbatim in front of a prospect makes the retrieval look broken when it
+ * is in fact working. Trim to the nearest whole word at both ends and drop the
+ * heading marks; the passage is evidence the answer is grounded, not the
+ * document itself.
+ */
+function passageExcerpt(raw: string): string {
+  let text = raw.replace(/^#+\s*/gm, "").replace(/\s+/g, " ").trim();
+
+  if (!/^[\p{Lu}\d"'¿¡(-]/u.test(text)) {
+    const space = text.indexOf(" ");
+    if (space > 0) text = text.slice(space + 1);
+  }
+
+  if (text.length > 220) text = text.slice(0, 220).replace(/\s+\S*$/, "") + "…";
+  return text;
+}
+
+function MorePassages({ hidden }: { hidden: number }) {
+  const { t } = useLocale();
+  return (
+    <li className="px-3 text-[11px] text-muted">{(t.moreRows as (n: number) => string)(hidden)}</li>
+  );
+}
+
 function Passages({ rows }: { rows: Any[] }) {
   if (rows.length === 0) return null;
+  const shown = rows.slice(0, MAX_PASSAGES);
   return (
     <ul className="my-2 space-y-1.5">
-      {rows.map((p, i) => (
+      {shown.map((p, i) => (
         <li key={i} className="rounded-console border-l-2 border-signal bg-surface px-3 py-2">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[12px] font-medium">{String(p.source)}</span>
@@ -369,12 +402,10 @@ function Passages({ rows }: { rows: Any[] }) {
               {String(p.matchedBy)}
             </span>
           </div>
-          <p className="mt-1 text-[12px] leading-snug text-muted">
-            {String(p.text).replace(/\s+/g, " ").slice(0, 260)}
-            {String(p.text).length > 260 ? "…" : ""}
-          </p>
+          <p className="mt-1 text-[12px] leading-snug text-muted">{passageExcerpt(String(p.text))}</p>
         </li>
       ))}
+      {rows.length > shown.length && <MorePassages hidden={rows.length - shown.length} />}
     </ul>
   );
 }
