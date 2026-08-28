@@ -195,6 +195,7 @@ export const STRINGS = {
       },
     },
 
+    moreRows: (n: number) => `+${n} more in the panel`,
     chartStatus: "Orders by status",
     chartCarrier: "Delays by carrier",
     chartTrend: "Volume, last 14 days",
@@ -410,6 +411,7 @@ export const STRINGS = {
       },
     },
 
+    moreRows: (n: number) => `+${n} más en el panel`,
     chartStatus: "Pedidos por estado",
     chartCarrier: "Retrasos por transportista",
     chartTrend: "Volumen, últimos 14 días",

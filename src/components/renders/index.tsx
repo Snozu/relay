@@ -67,14 +67,34 @@ export const HAS_RENDER = new Set([
 
 // ── tables ─────────────────────────────────────────────────────────────────
 
+/**
+ * How many rows a table puts in the conversation.
+ *
+ * A tool that finds 25 delayed orders is doing its job; a chat bubble that
+ * prints all 25 is not. The transcript stays readable and the full result is
+ * one click away in the activity panel, which is where a long list belongs.
+ */
+const MAX_ROWS = 8;
+
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="scroll-x my-2 rounded-console border border-border bg-surface">{children}</div>
   );
 }
 
+function MoreRows({ hidden }: { hidden: number }) {
+  const { t } = useLocale();
+  if (hidden <= 0) return null;
+  return (
+    <div className="border-t border-border px-3 py-1.5 text-[11px] text-muted">
+      {(t.moreRows as (n: number) => string)(hidden)}
+    </div>
+  );
+}
+
 function DelayedOrders({ rows }: { rows: Any[] }) {
   if (rows.length === 0) return null;
+  const shown = rows.slice(0, MAX_ROWS);
   return (
     <Shell>
       <table className="w-full min-w-[34rem] text-left text-[12px]">
@@ -89,29 +109,41 @@ function DelayedOrders({ rows }: { rows: Any[] }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => (
+          {shown.map((r) => (
             <tr key={String(r.orderNumber)} className="border-b border-border/50 last:border-0">
-              <td className="px-3 py-1.5 font-mono">{String(r.orderNumber)}</td>
+              <td className="whitespace-nowrap px-3 py-1.5 font-mono">{String(r.orderNumber)}</td>
               <td className="px-3 py-1.5">
-                {String(r.customer)}
-                <span className="ml-1.5 text-muted">{String(r.destination)}</span>
+                {/* The name gives way before the row does: one line per order,
+                    always, so the eye can run down the column. */}
+                <div className="flex max-w-[11rem] items-baseline gap-1.5">
+                  <span className="truncate">{String(r.customer)}</span>
+                  <span className="shrink-0 truncate whitespace-nowrap text-muted">
+                    {String(r.destination)}
+                  </span>
+                </div>
               </td>
               <td className="px-3 py-1.5 font-mono text-muted">{String(r.carrier)}</td>
               <td className="px-3 py-1.5">
                 <StatusBadge value={String(r.shipmentStatus)} />
               </td>
-              <td className="px-3 py-1.5 text-right font-mono tnum text-write">{String(r.daysLate)}d</td>
-              <td className="px-3 py-1.5 text-right font-mono tnum">{String(r.value)}</td>
+              <td className="whitespace-nowrap px-3 py-1.5 text-right font-mono tnum text-write">
+                {String(r.daysLate)}d
+              </td>
+              <td className="whitespace-nowrap px-3 py-1.5 text-right font-mono tnum">
+                {String(r.value)}
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+      <MoreRows hidden={rows.length - shown.length} />
     </Shell>
   );
 }
 
 function OrderRows({ rows }: { rows: Any[] }) {
   if (rows.length === 0) return null;
+  const shown = rows.slice(0, MAX_ROWS);
   return (
     <Shell>
       <table className="w-full min-w-[30rem] text-left text-[12px]">
@@ -125,19 +157,24 @@ function OrderRows({ rows }: { rows: Any[] }) {
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => (
+          {shown.map((r) => (
             <tr key={String(r.orderNumber)} className="border-b border-border/50 last:border-0">
-              <td className="px-3 py-1.5 font-mono">{String(r.orderNumber)}</td>
-              <td className="px-3 py-1.5">{String(r.customer)}</td>
+              <td className="whitespace-nowrap px-3 py-1.5 font-mono">{String(r.orderNumber)}</td>
+              <td className="px-3 py-1.5">
+                <span className="block max-w-[11rem] truncate">{String(r.customer)}</span>
+              </td>
               <td className="px-3 py-1.5">
                 <StatusBadge value={String(r.status)} />
               </td>
-              <td className="px-3 py-1.5 text-muted">{String(r.placedAt)}</td>
-              <td className="px-3 py-1.5 text-right font-mono tnum">{String(r.value)}</td>
+              <td className="whitespace-nowrap px-3 py-1.5 text-muted">{String(r.placedAt)}</td>
+              <td className="whitespace-nowrap px-3 py-1.5 text-right font-mono tnum">
+                {String(r.value)}
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
+      <MoreRows hidden={rows.length - shown.length} />
     </Shell>
   );
 }
@@ -146,7 +183,7 @@ function TicketRows({ rows }: { rows: Any[] }) {
   if (rows.length === 0) return null;
   return (
     <ul className="my-2 space-y-1.5">
-      {rows.map((r) => (
+      {rows.slice(0, MAX_ROWS).map((r) => (
         <li key={String(r.number)} className="rounded-console border border-border bg-surface px-3 py-2">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-[11px]">{String(r.number)}</span>
