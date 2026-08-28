@@ -370,11 +370,26 @@ const MAX_PASSAGES = 3;
  * document itself.
  */
 function passageExcerpt(raw: string): string {
-  let text = raw.replace(/^#+\s*/gm, "").replace(/\s+/g, " ").trim();
+  let text = raw
+    .replace(/[*_]{1,2}/g, "")            // bold and italic markers
+    .replace(/\s*\|\s*/g, " · ")         // flattened table cells
+    .replace(/\s+/g, " ")
+    .replace(/#{1,6}\s+/g, "")            // heading marks, wherever the cut left them
+    .replace(/·(?:\s*·)+/g, "·")          // empty cells collapse into one separator
+    .trim();
 
-  if (!/^[\p{Lu}\d"'¿¡(-]/u.test(text)) {
-    const space = text.indexOf(" ");
-    if (space > 0) text = text.slice(space + 1);
+  // Chunks are cut by length, so one routinely opens mid-sentence. When a
+  // sentence starts near the front, begin there; otherwise drop the half word
+  // the cut left behind. Evidence that begins mid-clause reads as broken even
+  // when the retrieval behind it is perfect.
+  if (!/^[\p{Lu}\d"'¿¡(]/u.test(text)) {
+    const boundary = text.slice(0, 100).search(/[.!?]\s+[-\p{Lu}\d"']/u);
+    if (boundary !== -1) {
+      text = text.slice(boundary + 1).trim();
+    } else {
+      const space = text.indexOf(" ");
+      if (space > 0) text = text.slice(space + 1);
+    }
   }
 
   if (text.length > 220) text = text.slice(0, 220).replace(/\s+\S*$/, "") + "…";
