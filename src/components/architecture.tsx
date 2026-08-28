@@ -183,7 +183,14 @@ export function Architecture({ messages }: { messages: UIMessage[] }) {
           </span>
         </div>
 
-        <div className="relative mt-4 w-full" style={{ aspectRatio: `${W} / ${H}` }}>
+        {/* The canvas is 1220 wide. Letting it shrink to a phone screen scales
+            every node label down to something like three pixels, so below that
+            it keeps its size and the diagram scrolls sideways instead. */}
+        <div className="scroll-x mt-4 -mx-4 px-4">
+          <div
+            className="relative w-full min-w-[52rem]"
+            style={{ aspectRatio: `${W} / ${H}` }}
+          >
           {/* edge layer */}
           <svg viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 h-full w-full">
             <defs>
@@ -329,6 +336,7 @@ export function Architecture({ messages }: { messages: UIMessage[] }) {
               </div>
             );
           })}
+          </div>
         </div>
 
         <p className="mt-6 rounded-console border border-write/40 bg-write-soft px-3 py-2 text-[12px] leading-relaxed">

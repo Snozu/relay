@@ -97,7 +97,7 @@ export function Console() {
   return (
     <div className="flex h-dvh flex-col">
       {/* ── header ─────────────────────────────────────────────────────── */}
-      <header className="flex shrink-0 items-center gap-3 border-b border-border bg-surface px-4 py-2.5">
+      <header className="flex shrink-0 items-center gap-2 border-b border-border bg-surface px-3 py-2.5 sm:gap-3 sm:px-4">
         <span className="flex items-center gap-2">
           <span className="size-2 rounded-full bg-signal" aria-hidden />
           <span className="text-[16px] font-semibold tracking-[-0.02em]">Relay</span>
@@ -105,7 +105,7 @@ export function Console() {
         <span className="hidden h-3.5 w-px bg-border-strong sm:block" aria-hidden />
         <span className="label hidden sm:inline">{t.subtitle}</span>
 
-        <span className="ml-4 flex overflow-hidden rounded-console border border-border text-[11px]">
+        <span className="ml-1 flex shrink-0 overflow-hidden rounded-console border border-border text-[11px] sm:ml-4">
           {(["console", "architecture"] as const).map((v) => (
             <button
               key={v}
@@ -120,14 +120,14 @@ export function Console() {
           ))}
         </span>
 
-        <div className="ml-auto flex items-center gap-3 font-mono text-[10px] text-muted">
+        <div className="ml-auto flex shrink-0 items-center gap-2 font-mono text-[10px] text-muted sm:gap-3">
           {stats && (
             <>
               <span className="hidden md:inline">
                 {stats.business.orders} {t.orders} · {stats.knowledge.chunks} {t.passages}
               </span>
               <span
-                className={`rounded border px-1.5 py-0.5 ${
+                className={`hidden rounded border px-1.5 py-0.5 sm:inline ${
                   ownKey ? "border-signal/50 text-signal" : "border-border"
                 }`}
                 title={ownKey ? "Running on your own API key" : undefined}
@@ -143,7 +143,7 @@ export function Console() {
                 key={l}
                 type="button"
                 onClick={() => setLocale(l)}
-                className={`px-1.5 py-0.5 uppercase transition-colors ${
+                className={`px-2 py-1 uppercase transition-colors sm:px-1.5 sm:py-0.5 ${
                   locale === l ? "bg-accent text-accent-contrast" : "hover:text-accent"
                 }`}
               >
@@ -154,7 +154,7 @@ export function Console() {
           <button
             type="button"
             onClick={() => setPanelOpen((v) => !v)}
-            className="rounded border border-border px-1.5 py-0.5 transition-colors hover:text-accent lg:hidden"
+            className="shrink-0 rounded border border-border px-2 py-1 transition-colors hover:text-accent lg:hidden"
           >
             {panelOpen ? t.hide : t.inspect}
           </button>
@@ -307,7 +307,7 @@ export function Console() {
                 e.preventDefault();
                 submit(input);
               }}
-              className="mx-auto flex w-full max-w-2xl items-end gap-2 px-4 py-3"
+              className="mx-auto flex w-full max-w-2xl items-end gap-2 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
             >
               <textarea
                 value={input}
@@ -320,7 +320,7 @@ export function Console() {
                 }}
                 rows={1}
                 placeholder={t.composer}
-                className="max-h-40 min-h-[2.5rem] flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-[15px] outline-none placeholder:text-muted focus:border-accent"
+                className="max-h-40 min-h-[2.5rem] flex-1 resize-none rounded-lg border border-border bg-background px-3 py-2 text-[16px] outline-none placeholder:text-muted focus:border-accent"
               />
               <button
                 type="submit"
